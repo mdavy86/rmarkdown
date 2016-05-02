@@ -216,6 +216,11 @@ function Header(lev, s, attr)
     lev = 2
   end
 
+  -- support for slide specific image backgrounds
+  -- alternative is this css
+  -- slide > slide [data-slide-num="7"] {
+  --   background-image: url("figures/xx.jpg");
+  -- }
   if attr["data-background"] then
     -- dark is incompatible with fill and let us uniquify nobackground
     slide_class = slide_class:gsub(" dark nobackground", "")
@@ -223,6 +228,14 @@ function Header(lev, s, attr)
     slide_class = slide_class:gsub("^%s", "")
     slide_style = 'background-image: url(' .. attr["data-background"] .. ');'
     attr["data-background"] = nil
+  end
+
+  -- ability to apply class to entire slide e.g. thank-you-slide
+  if attr["slide-class"] then
+    slide_class = slide_class:gsub("%f[%a]" .. attr["slide-class"] .. "%f[%A]", "")
+    slide_class = slide_class .. " " .. attr["slide-class"]
+    slide_class = slide_class:gsub("^%s", "")
+    attr["slide-class"] = nil
   end
 
   -- extract optional subtitle
