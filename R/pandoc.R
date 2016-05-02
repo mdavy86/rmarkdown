@@ -46,7 +46,7 @@ pandoc_convert <- function(input,
                            output = NULL,
                            citeproc = FALSE,
                            options = NULL,
-                           verbose = FALSE,
+                           verbose = TRUE,
                            wd = NULL) {
 
   # ensure we've scanned for pandoc

@@ -209,10 +209,19 @@ function Header(lev, s, attr)
   -- detect level 1 header and convert it to a segue slide
   local slide_class = ""
   local hgroup_class = ""
+  local slide_style = ""
   if lev == 1 then
     slide_class = "segue dark nobackground"
     hgroup_class = " class = 'auto-fadein'"
     lev = 2
+  end
+
+  if attr["data-background"] then
+    -- dark is incompatible with fill and let us uniquify nobackground
+    slide_class = slide_class:gsub(" dark nobackground", "")
+    slide_class = slide_class .. " fill nobackground"
+    slide_class = slide_class:gsub("^%s", "")
+    slide_style = 'background-image: url(' .. attr["data-background"] .. ');'
   end
 
   -- extract optional subtitle
@@ -252,8 +261,12 @@ function Header(lev, s, attr)
       attr["class"] = "smaller " .. attr["class"]
     end
 
+    if slide_style then
+      slide_style = ' style="' .. slide_style .. '"'
+    end
+
     -- return the beginning of the slide
-    return preface .. "<slide class='" .. slide_class .. "'>" ..
+    return preface .. "<slide class='" .. slide_class .. "'" .. slide_style .. ">" ..
            "<hgroup" .. hgroup_class .. ">" .. header ..  "</hgroup>" ..
            "<article " .. attributes(attr) .. ">"
   else
