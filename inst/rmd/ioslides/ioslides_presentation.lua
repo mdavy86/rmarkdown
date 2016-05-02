@@ -226,7 +226,12 @@ function Header(lev, s, attr)
     slide_class = slide_class:gsub(" dark nobackground", "")
     slide_class = slide_class .. " fill nobackground"
     slide_class = slide_class:gsub("^%s", "")
-    slide_style = 'background-image: url(' .. attr["data-background"] .. ');'
+    if attr["data-background"]:match("^#") then
+      slide_style = 'background-color: ' .. attr["data-background"] .. ';'
+    else
+      -- assume url
+      slide_style = 'background-image: url(' .. attr["data-background"] .. ');'
+    end
     attr["data-background"] = nil
   end
 
