@@ -222,6 +222,7 @@ function Header(lev, s, attr)
     slide_class = slide_class .. " fill nobackground"
     slide_class = slide_class:gsub("^%s", "")
     slide_style = 'background-image: url(' .. attr["data-background"] .. ');'
+    attr["data-background"] = nil
   end
 
   -- extract optional subtitle
