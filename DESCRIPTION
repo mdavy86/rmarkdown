@@ -1,7 +1,7 @@
 Package: rmarkdown
 Type: Package
 Title: Dynamic Documents for R
-Version: 0.9.6
+Version: 0.9.6.9
 Date: 2016-04-28
 Authors@R: c(
   person("JJ", "Allaire", role = c("aut", "cre"), email = "jj@rstudio.com"),
@@ -36,6 +36,8 @@ Authors@R: c(
          comment = "highlight.js library"),
   person("Greg", "Franko", role = c("ctb", "cph"),
          comment = "tocify library"),
+  person("Eli", "Grey", role = c("ctb", "cph"),
+         comment = "FileSaver library"),
   person("John", "MacFarlane", role = c("ctb", "cph"),
          comment = "Pandoc templates"),
   person(family = "Google, Inc.", role = c("ctb", "cph"),
@@ -61,10 +63,13 @@ Imports:
     tools,
     utils,
     grDevices,
-    knitr (>= 1.12),
+    knitr (>= 1.13),
     yaml (>= 2.1.5),
     htmltools (>= 0.2.4),
-    caTools
+    caTools,
+    evaluate,
+    base64enc,
+    jsonlite
 Suggests:
     shiny (>= 0.11),
     tufte,

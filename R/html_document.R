@@ -19,11 +19,13 @@
 #'@param fig_caption \code{TRUE} to render figures with captions
 #'@param dev Graphics device to use for figure output (defaults to png)
 #'@param code_folding Enable document readers to toggle the display of R code
-#'  chunks. Defaults to \code{"none"} which displays all code chunks (assuming
+#'  chunks. Specify \code{"none"} to display all code chunks (assuming
 #'  they were knit with \code{echo = TRUE}). Specify \code{"hide"} to hide all R
 #'  code chunks by default (users can show hidden code chunks either
 #'  individually or document-wide). Specify \code{"show"} to show all R code
 #'  chunks by default.
+#'@param code_download Embed the Rmd source code within the document and provide
+#'  a link that can be used by readers to download the code.
 #'@param smart Produce typographically correct output, converting straight
 #'  quotes to curly quotes, --- to em-dashes, -- to en-dashes, and ... to
 #'  ellipses.
@@ -190,6 +192,7 @@ html_document <- function(toc = FALSE,
                           fig_caption = TRUE,
                           dev = 'png',
                           code_folding = c("none", "show", "hide"),
+                          code_download = FALSE,
                           smart = TRUE,
                           self_contained = TRUE,
                           theme = "default",
@@ -211,11 +214,11 @@ html_document <- function(toc = FALSE,
   # use section divs
   args <- c(args, "--section-divs")
 
-  # toc_float
-  if (!identical(toc_float, FALSE)) {
+  # table of contents
+  args <- c(args, pandoc_toc_args(toc, toc_depth))
 
-    # force toc on
-    toc <- TRUE
+  # toc_float
+  if (toc && !identical(toc_float, FALSE)) {
 
     # must have a theme
     if (is.null(theme))
@@ -251,9 +254,6 @@ html_document <- function(toc = FALSE,
       args <- c(args, pandoc_variable_arg("toc_smooth_scroll", "1"))
   }
 
-  # table of contents
-  args <- c(args, pandoc_toc_args(toc, toc_depth))
-
   # template path and assets
   if (identical(template, "default"))
     args <- c(args, "--template",
@@ -272,8 +272,18 @@ html_document <- function(toc = FALSE,
   # validate code_folding
   code_folding <- match.arg(code_folding)
 
-  # dummy pre_knit function so that merging of outputs works
-  pre_knit <- function(input, ...) {}
+  # capture the source code if requested
+  source_code <- NULL
+  source_file <- NULL
+  pre_knit <- function(input, ...) {
+    if (code_download) {
+      source_file <<- basename(input)
+      source_code <<- paste0(
+        '<div id="rmd-source-code">',
+        base64enc::base64encode(input),
+        '</div>')
+    }
+  }
 
   # pre-processor for arguments that may depend on the name of the
   # the input file AND which need to inject html dependencies
@@ -353,13 +363,32 @@ html_document <- function(toc = FALSE,
                                                   output_dir))
     }
 
+    # track whether we have a code menu
+    code_menu <- FALSE
+
     # code_folding
     if (code_folding %in% c("show", "hide")) {
       # must have a theme
       if (is.null(theme))
         stop("You must use a theme when specifying the 'code_folding' option")
       args <- c(args, pandoc_variable_arg("code_folding", code_folding))
+      code_menu <- TRUE
     }
+
+    # source_embed
+    if (code_download) {
+      if (is.null(theme))
+        stop("You must use a theme when specifying the 'code_download' option")
+      args <- c(args, pandoc_variable_arg("source_embed", source_file))
+      sourceCodeFile <- tempfile(fileext = ".html")
+      writeLines(source_code, sourceCodeFile)
+      args <- c(args, pandoc_include_args(after_body = sourceCodeFile))
+      code_menu <- TRUE
+    }
+
+    # code menu
+    if (code_menu)
+      args <- c(args, pandoc_variable_arg("code_menu", "1"))
 
     # content includes (we do this here so that user include-in-header content
     # goes after dependency generated content). make the paths absolute if
@@ -383,6 +412,7 @@ html_document <- function(toc = FALSE,
                             args = args),
     keep_md = keep_md,
     clean_supporting = self_contained,
+    pre_knit = pre_knit,
     post_knit = post_knit,
     pre_processor = pre_processor,
     base_format = html_document_base(smart = smart, theme = theme,

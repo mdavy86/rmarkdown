@@ -210,8 +210,10 @@ function Header(lev, s, attr)
   local slide_class = ""
   local hgroup_class = ""
   local slide_style = ""
-  if lev == 1 then
-    slide_class = "segue dark nobackground"
+  -- make all headers < slide_level as segue slides
+  if lev < slide_level then
+  	-- create a segue slide but add lev class for possible customization
+    slide_class = "segue dark nobackground" .. " level" .. lev
     hgroup_class = " class = 'auto-fadein'"
     lev = 2
   end
@@ -252,6 +254,12 @@ function Header(lev, s, attr)
       subtitle = string.sub(s, i+1, string.len(s))
       s = string.sub(s, 1, i-1)
     end
+  end
+
+  -- trick: as lev value 2 is used in code below to start a new slide
+  -- we force all lev <= slide_level as new slides
+  if lev > 2 and lev <= slide_level then
+  	lev = 2
   end
 
   -- build slide header (including optional subtitle)
