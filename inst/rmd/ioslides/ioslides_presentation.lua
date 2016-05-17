@@ -231,6 +231,7 @@ function Header(lev, s, attr)
     else
       -- assume url
       slide_style = 'background-image: url(' .. attr["data-background"] .. ');'
+      slide_style = slide_style .. ' background-size: 100% 100%;'
     end
     attr["data-background"] = nil
   end
