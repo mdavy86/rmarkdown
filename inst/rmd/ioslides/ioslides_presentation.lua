@@ -41,6 +41,13 @@ local function attributes(attr)
   return table.concat(attr_table)
 end
 
+-- Helper function to split a string on spaces
+-- returns a table
+local function split(str)
+  local words = {}
+  for word in str:gmatch("%S+") do table.insert(words, word) end
+  return words
+end
 
 -- Blocksep is used to separate block elements.
 function Blocksep()
@@ -239,12 +246,29 @@ function Header(lev, s, attr)
   end
 
   -- ability to apply class to entire slide e.g. thank-you-slide
-  if attr["class"] and attr["class"]:match("\.\.$") then
-    attr["class"] = attr["class"]:gsub("\.\.$", "")
-    slide_class = slide_class:gsub("%f[%a]" .. attr["class"] .. "%f[%A]", "")
-    slide_class = slide_class .. " " .. attr["class"]
+  if attr["class"] and string.len(attr["class"]) > 0 then
+    slide = {}
+    article = {}
+    -- split on space
+    selectors = split(attr["class"])
+    -- loop selectors
+    for k,sel in pairs(selectors) do
+      if sel:match("%.%.$") then
+        -- append to the list of slide classes
+        sel = sel:gsub("%.%.$", "")
+        table.insert(slide, sel)
+      else
+        -- append to the list of article classes
+        --
+        table.insert(article, sel)
+      end
+    end
+    attr["class"] = table.concat(article, " ")
+    if string.len(attr["class"]) == 0 then
+      attr["class"] = nil
+    end
+    slide_class = slide_class .. " " .. table.concat(slide, " ")
     slide_class = slide_class:gsub("^%s", "")
-    attr["class"] = nil
   end
 
   -- extract optional subtitle
