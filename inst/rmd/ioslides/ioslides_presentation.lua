@@ -49,6 +49,32 @@ local function split(str)
   return words
 end
 
+-- Helper function to remove duplicates
+-- returns a table http://stackoverflow.com/a/20067270
+local function uniq(t)
+  local seen = {}
+  local res = {}
+  for _,v in ipairs(t) do
+    if (not seen[v]) then
+      res[#res+1] = v
+      seen[v] = true
+    end
+  end
+  return res
+end
+
+-- Helper function to filter a list
+-- returns a table
+local function grep(f, l)
+  local res = {}
+  for _,v in ipairs(l) do
+    if (f(v)) then
+      res[#res+1] = v
+    end
+  end
+  return res
+end
+
 -- Blocksep is used to separate block elements.
 function Blocksep()
   return "\n\n"
@@ -232,9 +258,11 @@ function Header(lev, s, attr)
   -- }
   if attr["data-background"] then
     -- dark is incompatible with fill and let us uniquify nobackground
-    slide_class = slide_class:gsub(" dark nobackground", "")
-    slide_class = slide_class .. " fill nobackground"
-    slide_class = slide_class:gsub("^%s", "")
+    local slide = split(slide_class .. " fill nobackground")
+    slide = grep(function (v)
+      if v:match("^dark$") then return false else return true end
+    end, slide)
+    slide_class = table.concat(uniq(slide), " ")
     if attr["data-background"]:match("^#") then
       slide_style = 'background-color: ' .. attr["data-background"] .. ';'
     else
@@ -252,23 +280,24 @@ function Header(lev, s, attr)
     -- split on space
     selectors = split(attr["class"])
     -- loop selectors
-    for k,sel in pairs(selectors) do
+    for _ ,sel in pairs(selectors) do
       if sel:match("%.%.$") then
         -- append to the list of slide classes
         sel = sel:gsub("%.%.$", "")
         table.insert(slide, sel)
       else
         -- append to the list of article classes
-        --
         table.insert(article, sel)
       end
     end
+    -- re-assign to attr["class"], deleting if empty
     attr["class"] = table.concat(article, " ")
     if string.len(attr["class"]) == 0 then
       attr["class"] = nil
     end
-    slide_class = slide_class .. " " .. table.concat(slide, " ")
-    slide_class = slide_class:gsub("^%s", "")
+    -- append and uniquify to slide_class
+    slide = split(slide_class .. " " .. table.concat(slide, " "))
+    slide_class = table.concat(uniq(slide), " ")
   end
 
   -- extract optional subtitle
