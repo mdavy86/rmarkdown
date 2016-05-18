@@ -15,35 +15,60 @@ context("ioslides")
 
 }
 
+mock_markdown <- function(mdtext = NULL,  outputdir = NULL, ... ) {
+  # create input file
+  mdfile <- tempfile(pattern = "mock_XXXXX",
+                     tmpdir = outputdir,
+                     fileext = ".Rmd")
+  cat(mdtext, file = mdfile, sep = "\n", append = FALSE)
+
+  # output file name
+  outfile <- basename(
+    tempfile(pattern = "mock_XXXXX",
+             tmpdir = outputdir,
+             fileext = ".html"
+    )
+  )
+  # convert
+  output <- capture.output(
+    render(mdfile,
+           output_dir = outputdir,
+           output_file = outfile,
+           ioslides_presentation(...)
+    )
+  )
+
+  # read in output
+  html_file <- readLines(file.path(outputdir, outfile))
+
+  # return structure for testing properties of
+  invisible(structure(
+    list(
+      output = output,
+      html_file = html_file
+      ),
+    class = "mocked")
+    )
+}
+
 test_ioslides_presentation <- function() {
 
   skip_on_cran()
 
-  outputdir <-  tempfile()
+  outputdir <- tempfile()
   dir.create(outputdir)
   on.exit(unlink(outputdir), add = TRUE)
 
   # Generate mock md file
   mdtext <- .generate_markdown_for_test()
-  mdfile <- file.path(outputdir, "mock.Rmd")
-  cat(mdtext, file = mdfile, sep = "\n")
-
-  # test conversion
-  outfile <- "mock_default.html"
-  rout2 <- capture.output(
-    render(mdfile,
-           output_dir = outputdir,
-           output_file = outfile,
-           ioslides_presentation()
-    )
-  )
+  mock2 <- mock_markdown(mdtext = mdtext, outputdir = outputdir)
 
   # test argument passing to pandoc
-  expect_true(any(grepl("--slide-level 2", paste(rout2), fixed = TRUE)))
+  expect_true(any(grepl("--slide-level 2", paste(mock2$output), fixed = TRUE)))
 
   # test status of headers in resulting file
   # Header3 should not be a slide header
-  html_file <- readLines(file.path(outputdir, outfile))
+  html_file <- mock2$html_file
   header_lines <- c(
     any(grepl("<h2>Header1</h2>", html_file, fixed = TRUE)),
     any(grepl("<h2>Header2</h2>", html_file, fixed = TRUE)),
@@ -66,22 +91,16 @@ test_ioslides_presentation <- function() {
   )
   expect_false(any(header_classes))
 
-
+  mock3 <- mock_markdown(mdtext = mdtext, outputdir = outputdir, slide_level = 3)
   # Place the header 3 as title slide
-  rout3 <- capture.output(
-    render(mdfile,
-           output_dir = outputdir,
-           output_file = outfile,
-           ioslides_presentation(slide_level = 3)
-    )
-  )
+  rout3 <- mock3$output
 
   # test argument passing to pandoc
   expect_true(any(grepl("--slide-level 3", paste(rout3), fixed = TRUE)))
 
   # test status of headers in resulting file
   # Header3 should be a slide header
-  html_file <- readLines(file.path(outputdir, outfile))
+  html_file <- mock3$html_file
   header_lines <- c(
     any(grepl("<h2>Header1</h2>", html_file, fixed = TRUE)),
     any(grepl("<h2>Header2</h2>", html_file, fixed = TRUE)),
@@ -107,3 +126,81 @@ test_ioslides_presentation <- function() {
 }
 
 test_that("test_ioslides_presentation", test_ioslides_presentation())
+
+test_ioslides_presentation_css <- function() {
+
+  skip_on_cran()
+
+  outputdir <- tempfile()
+  dir.create(outputdir)
+  on.exit(unlink(outputdir), add = TRUE)
+
+  # Generate mock md file
+  mdtext <- c("# Slide One\n",
+
+              ## class applied to the article
+              "## Slide Two {.header-2}\n",
+
+              ## class applied to the slide
+              "## Slide Three {.heading-3..}\n",
+
+              ## beta delta to slide alpha gamma to article
+              "## Slide Four {class=\"alpha beta.. gamma delta..\"}\n",
+
+              ## id=example-id applied to article
+              "## Slide Five {#example-id}\n")
+  mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir)
+
+  # save some bytes
+  html <- mock$html_file
+  # check lines for correct attributes on tags for slides
+  # anchor on the tag and use [^>]* to "link" tag with attribute
+  # anchor on slide title to ensure the correct slide is the subject
+  slide_lines <- c(
+    any(grepl('<slide[^>]*class="[^"]*segue[^"]*".*<h2>Slide One</h2>', html)),
+    any(grepl('<h2>Slide Two</h2>.*<article[^>]*class="header-2"', html)),
+    any(grepl('<slide[^>]*class="heading-3".*<h2>Slide Three</h2>', html)),
+    ## separated to be order agnostic
+    any(grepl('<slide[^>]*class="[^"]*beta[^"]*".*<h2>Slide Four</h2>', html)),
+    any(grepl('<slide[^>]*class="[^"]*delta[^"]*".*<h2>Slide Four</h2>', html)),
+    ## separated to be order agnostic
+    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*alpha[^"]*"', html)),
+    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*gamma[^"]*"', html)),
+    any(grepl('<h2>Slide Five</h2>.*<article[^>]*id="example-id"', html))
+  )
+  expect_true(all(slide_lines), info = "slide lines - class attribute")
+
+  # Generate mock md file for data-background
+  mdtext <- c("# Slide One\n",
+              "## Slide Two {data-background=#CCC}\n",
+              "## Slide Three {data-background=img/test.png}\n",
+              "# Slide Four {data-background=#ABCDEF}\n"
+              )
+  mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir)
+  html = mock$html_file
+  #  <slide class="fill nobackground" style="background-image: url(img/test.png); background-size: 100% 100%;">
+  slide_lines <-
+    c(any(grepl('<slide[^>]*class="[^"]*segue[^"]*".*<h2>Slide One</h2>', html))
+    ## separated to be order agnostic
+    , any(grepl('<slide[^>]*class="[^"]*nobackground[^"]*".*<h2>Slide Two</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*fill[^"]*".*<h2>Slide Two</h2>', html))
+    , any(grepl('<slide[^>]*style="background-color: #CCC;".*<h2>Slide Two</h2>', html, perl = TRUE))
+
+    ## separated to be order agnostic - within values of attributes also (hence [^"]*)
+    , any(grepl('<slide[^>]*class="[^"]*nobackground[^"]*".*<h2>Slide Two</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*fill[^"]*".*<h2>Slide Two</h2>', html))
+    , any(grepl('<slide[^>]*style="[^"]*background-image: url\\(img/test.png\\);[^"]*".*<h2>Slide Three</h2>', html))
+    , any(grepl('<slide[^>]*style="[^"]*background-size: 100% 100%;[^"]*".*<h2>Slide Three</h2>', html))
+
+    ## separated to be order agnostic
+    , any(grepl('<slide[^>]*class="[^"]*segue[^"]*".*<h2>Slide Four</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*nobackground[^"]*".*<h2>Slide Four</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*fill[^"]*".*<h2>Slide Four</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*level1[^"]*".*<h2>Slide Four</h2>', html))
+    , any(grepl('<slide[^>]*style="background-color: #ABCDEF;".*<h2>Slide Four</h2>', html, perl = TRUE))
+  )
+  expect_true(all(slide_lines), info = "slide lines - style attribute")
+}
+
+
+test_that("ioslides presentation is styled", test_ioslides_presentation_css())
