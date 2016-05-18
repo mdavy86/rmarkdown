@@ -239,11 +239,12 @@ function Header(lev, s, attr)
   end
 
   -- ability to apply class to entire slide e.g. thank-you-slide
-  if attr["slide-class"] then
-    slide_class = slide_class:gsub("%f[%a]" .. attr["slide-class"] .. "%f[%A]", "")
-    slide_class = slide_class .. " " .. attr["slide-class"]
+  if attr["class"] and attr["class"]:match("\.\.$") then
+    attr["class"] = attr["class"]:gsub("\.\.$", "")
+    slide_class = slide_class:gsub("%f[%a]" .. attr["class"] .. "%f[%A]", "")
+    slide_class = slide_class .. " " .. attr["class"]
     slide_class = slide_class:gsub("^%s", "")
-    attr["slide-class"] = nil
+    attr["class"] = nil
   end
 
   -- extract optional subtitle
@@ -289,7 +290,7 @@ function Header(lev, s, attr)
       attr["class"] = "smaller " .. attr["class"]
     end
 
-    if slide_style then
+    if string.len(slide_style) > 0 then
       slide_style = ' style="' .. slide_style .. '"'
     end
 
