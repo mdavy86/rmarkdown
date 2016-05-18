@@ -348,7 +348,7 @@ function Header(lev, s, attr)
     end
 
     -- return the beginning of the slide
-    return preface .. "<slide class='" .. slide_class .. "'" .. slide_style .. ">" ..
+    return preface .. "<slide class=\"" .. slide_class .. "\"" .. slide_style .. ">" ..
            "<hgroup" .. hgroup_class .. ">" .. header ..  "</hgroup>" ..
            "<article " .. attributes(attr) .. ">"
   else
