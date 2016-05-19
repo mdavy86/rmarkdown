@@ -174,11 +174,13 @@ test_ioslides_presentation_css <- function() {
   mdtext <- c("# Slide One\n",
               "## Slide Two {data-background=#CCC}\n",
               "## Slide Three {data-background=img/test.png}\n",
-              "# Slide Four {data-background=#ABCDEF}\n"
+              "# Slide Four {data-background=#ABCDEF}\n",
+              "## Slide Five {data-background=#EEE .css-tricks..}\n",
+              "## Slide Six {data-background=#EEE .css-tricks}\n"
               )
   mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir)
   html = mock$html_file
-  #  <slide class="fill nobackground" style="background-image: url(img/test.png); background-size: 100% 100%;">
+
   slide_lines <-
     c(any(grepl('<slide[^>]*class="[^"]*segue[^"]*".*<h2>Slide One</h2>', html))
     ## separated to be order agnostic
@@ -198,6 +200,14 @@ test_ioslides_presentation_css <- function() {
     , any(grepl('<slide[^>]*class="[^"]*fill[^"]*".*<h2>Slide Four</h2>', html))
     , any(grepl('<slide[^>]*class="[^"]*level1[^"]*".*<h2>Slide Four</h2>', html))
     , any(grepl('<slide[^>]*style="background-color: #ABCDEF;".*<h2>Slide Four</h2>', html, perl = TRUE))
+
+    ## adding background does not interfere with slide level class
+    , any(grepl('<slide[^>]*class="[^"]*css-tricks[^"]*".*<h2>Slide Five</h2>', html))
+    , any(grepl('<slide[^>]*style="background-color: #EEE;".*<h2>Slide Five</h2>', html, perl = TRUE))
+
+    ## adding background does not interfere with article level class
+    , any(grepl('<h2>Slide Six</h2>.*<article[^>]*class="[^"]*css-tricks[^"]*"', html))
+    , any(grepl('<slide[^>]*style="background-color: #EEE;".*<h2>Slide Six</h2>', html, perl = TRUE))
   )
   expect_true(all(slide_lines), info = "slide lines - style attribute")
 }
