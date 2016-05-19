@@ -270,6 +270,7 @@ function Header(lev, s, attr)
       slide_style = 'background-image: url(' .. attr["data-background"] .. ');'
       slide_style = slide_style .. ' background-size: 100% 100%;'
     end
+    -- remove noise attributes for article
     attr["data-background"] = nil
   end
 
@@ -282,7 +283,7 @@ function Header(lev, s, attr)
     -- loop selectors
     for _ ,sel in pairs(selectors) do
       if sel:match("%.%.$") then
-        -- append to the list of slide classes
+        -- append to the list of slide classes when matching '..' at end of string
         sel = sel:gsub("%.%.$", "")
         table.insert(slide, sel)
       else
