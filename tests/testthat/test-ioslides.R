@@ -157,15 +157,15 @@ test_ioslides_presentation_css <- function() {
   # anchor on the tag and use [^>]* to "link" tag with attribute
   # anchor on slide title to ensure the correct slide is the subject
   slide_lines <- c(
-    any(grepl('<slide[^>]*class="[^"]*segue[^"]*".*<h2>Slide One</h2>', html)),
+    any(grepl('<slide[^>]*class="[^"]*\\bsegue\\b[^"]*".*<h2>Slide One</h2>', html, perl = TRUE)),
     any(grepl('<h2>Slide Two</h2>.*<article[^>]*class="header-2"', html)),
     any(grepl('<slide[^>]*class="heading-3".*<h2>Slide Three</h2>', html)),
     ## separated to be order agnostic
-    any(grepl('<slide[^>]*class="[^"]*beta[^"]*".*<h2>Slide Four</h2>', html)),
-    any(grepl('<slide[^>]*class="[^"]*delta[^"]*".*<h2>Slide Four</h2>', html)),
+    any(grepl('<slide[^>]*class="[^"]*\\bbeta\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE)),
+    any(grepl('<slide[^>]*class="[^"]*\\bdelta\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE)),
     ## separated to be order agnostic
-    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*alpha[^"]*"', html)),
-    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*gamma[^"]*"', html)),
+    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*\\balpha\\b[^"]*"', html, perl = TRUE)),
+    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*\\bgamma\\b[^"]*"', html, perl = TRUE)),
     any(grepl('<h2>Slide Five</h2>.*<article[^>]*id="example-id"', html))
   )
   expect_true(all(slide_lines), info = "slide lines - class attribute")
@@ -182,31 +182,31 @@ test_ioslides_presentation_css <- function() {
   html = mock$html_file
 
   slide_lines <-
-    c(any(grepl('<slide[^>]*class="[^"]*segue[^"]*".*<h2>Slide One</h2>', html))
+    c(any(grepl('<slide[^>]*class="[^"]*\\bsegue\\b[^"]*".*<h2>Slide One</h2>', html, perl = TRUE))
     ## separated to be order agnostic
-    , any(grepl('<slide[^>]*class="[^"]*nobackground[^"]*".*<h2>Slide Two</h2>', html))
-    , any(grepl('<slide[^>]*class="[^"]*fill[^"]*".*<h2>Slide Two</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*\\bnobackground\\b[^"]*".*<h2>Slide Two</h2>', html, perl = TRUE))
+    , any(grepl('<slide[^>]*class="[^"]*\\bfill\\b[^"]*".*<h2>Slide Two</h2>', html, perl = TRUE))
     , any(grepl('<slide[^>]*style="background-color: #CCC;".*<h2>Slide Two</h2>', html, perl = TRUE))
 
     ## separated to be order agnostic - within values of attributes also (hence [^"]*)
-    , any(grepl('<slide[^>]*class="[^"]*nobackground[^"]*".*<h2>Slide Two</h2>', html))
-    , any(grepl('<slide[^>]*class="[^"]*fill[^"]*".*<h2>Slide Two</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*\\bnobackground\\b[^"]*".*<h2>Slide Two</h2>', html, perl = TRUE))
+    , any(grepl('<slide[^>]*class="[^"]*\\bfill\\b[^"]*".*<h2>Slide Two</h2>', html, perl = TRUE))
     , any(grepl('<slide[^>]*style="[^"]*background-image: url\\(img/test.png\\);[^"]*".*<h2>Slide Three</h2>', html))
     , any(grepl('<slide[^>]*style="[^"]*background-size: 100% 100%;[^"]*".*<h2>Slide Three</h2>', html))
 
     ## separated to be order agnostic
-    , any(grepl('<slide[^>]*class="[^"]*segue[^"]*".*<h2>Slide Four</h2>', html))
-    , any(grepl('<slide[^>]*class="[^"]*nobackground[^"]*".*<h2>Slide Four</h2>', html))
-    , any(grepl('<slide[^>]*class="[^"]*fill[^"]*".*<h2>Slide Four</h2>', html))
-    , any(grepl('<slide[^>]*class="[^"]*level1[^"]*".*<h2>Slide Four</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*\\bsegue\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE))
+    , any(grepl('<slide[^>]*class="[^"]*\\bnobackground\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE))
+    , any(grepl('<slide[^>]*class="[^"]*\\bfill\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE))
+    , any(grepl('<slide[^>]*class="[^"]*\\blevel1\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE))
     , any(grepl('<slide[^>]*style="background-color: #ABCDEF;".*<h2>Slide Four</h2>', html, perl = TRUE))
 
     ## adding background does not interfere with slide level class
-    , any(grepl('<slide[^>]*class="[^"]*css-tricks[^"]*".*<h2>Slide Five</h2>', html))
+    , any(grepl('<slide[^>]*class="[^"]*\\bcss-tricks\\b[^"]*".*<h2>Slide Five</h2>', html, perl = TRUE))
     , any(grepl('<slide[^>]*style="background-color: #EEE;".*<h2>Slide Five</h2>', html, perl = TRUE))
 
     ## adding background does not interfere with article level class
-    , any(grepl('<h2>Slide Six</h2>.*<article[^>]*class="[^"]*css-tricks[^"]*"', html))
+    , any(grepl('<h2>Slide Six</h2>.*<article[^>]*class="[^"]*\\bcss-tricks\\b[^"]*"', html, perl = TRUE))
     , any(grepl('<slide[^>]*style="background-color: #EEE;".*<h2>Slide Six</h2>', html, perl = TRUE))
   )
   expect_true(all(slide_lines), info = "slide lines - style attribute")
