@@ -135,48 +135,11 @@ test_ioslides_presentation_css <- function() {
   dir.create(outputdir)
   on.exit(unlink(outputdir), add = TRUE)
 
-  # Generate mock md file
-  mdtext <- c("# Slide One\n",
-
-              ## class applied to the article
-              "## Slide Two {.header-2}\n",
-
-              ## class applied to the slide
-              "## Slide Three {.heading-3..}\n",
-
-              ## beta delta to slide alpha gamma to article
-              "## Slide Four {class=\"alpha beta.. gamma delta..\"}\n",
-
-              ## id=example-id applied to article
-              "## Slide Five {#example-id}\n")
-  mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir)
-
-  # save some bytes
-  html <- mock$html_file
-  # check lines for correct attributes on tags for slides
-  # anchor on the tag and use [^>]* to "link" tag with attribute
-  # anchor on slide title to ensure the correct slide is the subject
-  slide_lines <- c(
-    any(grepl('<slide[^>]*class="[^"]*\\bsegue\\b[^"]*".*<h2>Slide One</h2>', html, perl = TRUE)),
-    any(grepl('<h2>Slide Two</h2>.*<article[^>]*class="header-2"', html)),
-    any(grepl('<slide[^>]*class="heading-3".*<h2>Slide Three</h2>', html)),
-    ## separated to be order agnostic
-    any(grepl('<slide[^>]*class="[^"]*\\bbeta\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE)),
-    any(grepl('<slide[^>]*class="[^"]*\\bdelta\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE)),
-    ## separated to be order agnostic
-    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*\\balpha\\b[^"]*"', html, perl = TRUE)),
-    any(grepl('<h2>Slide Four</h2>.*<article[^>]*class="[^"]*\\bgamma\\b[^"]*"', html, perl = TRUE)),
-    any(grepl('<h2>Slide Five</h2>.*<article[^>]*id="example-id"', html))
-  )
-  expect_true(all(slide_lines), info = "slide lines - class attribute")
-
   # Generate mock md file for data-background
   mdtext <- c("# Slide One\n",
               "## Slide Two {data-background=#CCC}\n",
               "## Slide Three {data-background=img/test.png}\n",
-              "# Slide Four {data-background=#ABCDEF}\n",
-              "## Slide Five {data-background=#EEE .css-tricks..}\n",
-              "## Slide Six {data-background=#EEE .css-tricks}\n"
+              "# Slide Four {data-background=#ABCDEF}\n"
               )
   mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir)
   html = mock$html_file
@@ -201,13 +164,6 @@ test_ioslides_presentation_css <- function() {
     , any(grepl('<slide[^>]*class="[^"]*\\blevel1\\b[^"]*".*<h2>Slide Four</h2>', html, perl = TRUE))
     , any(grepl('<slide[^>]*style="background-color: #ABCDEF;".*<h2>Slide Four</h2>', html, perl = TRUE))
 
-    ## adding background does not interfere with slide level class
-    , any(grepl('<slide[^>]*class="[^"]*\\bcss-tricks\\b[^"]*".*<h2>Slide Five</h2>', html, perl = TRUE))
-    , any(grepl('<slide[^>]*style="background-color: #EEE;".*<h2>Slide Five</h2>', html, perl = TRUE))
-
-    ## adding background does not interfere with article level class
-    , any(grepl('<h2>Slide Six</h2>.*<article[^>]*class="[^"]*\\bcss-tricks\\b[^"]*"', html, perl = TRUE))
-    , any(grepl('<slide[^>]*style="background-color: #EEE;".*<h2>Slide Six</h2>', html, perl = TRUE))
   )
   expect_true(all(slide_lines), info = "slide lines - style attribute")
 }

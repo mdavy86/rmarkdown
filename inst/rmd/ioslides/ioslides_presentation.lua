@@ -274,33 +274,6 @@ function Header(lev, s, attr)
     attr["data-background"] = nil
   end
 
-  -- ability to apply class to entire slide e.g. thank-you-slide
-  if attr["class"] and string.len(attr["class"]) > 0 then
-    slide = {}
-    article = {}
-    -- split on space
-    selectors = split(attr["class"])
-    -- loop selectors
-    for _ ,sel in pairs(selectors) do
-      if sel:match("%.%.$") then
-        -- append to the list of slide classes when matching '..' at end of string
-        sel = sel:gsub("%.%.$", "")
-        table.insert(slide, sel)
-      else
-        -- append to the list of article classes
-        table.insert(article, sel)
-      end
-    end
-    -- re-assign to attr["class"], deleting if empty
-    attr["class"] = table.concat(article, " ")
-    if string.len(attr["class"]) == 0 then
-      attr["class"] = nil
-    end
-    -- append and uniquify to slide_class
-    slide = split(slide_class .. " " .. table.concat(slide, " "))
-    slide_class = table.concat(uniq(slide), " ")
-  end
-
   -- extract optional subtitle
   local subtitle = ""
   if lev == 2 then
