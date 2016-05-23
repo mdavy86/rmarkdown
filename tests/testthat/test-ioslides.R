@@ -141,7 +141,7 @@ test_ioslides_presentation_css <- function() {
               "## Slide Three {data-background=img/test.png}\n",
               "# Slide Four {data-background=#ABCDEF}\n"
               )
-  mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir)
+  mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir, self_contained = FALSE)
   html = mock$html_file
 
   slide_lines <-
@@ -166,6 +166,19 @@ test_ioslides_presentation_css <- function() {
 
   )
   expect_true(all(slide_lines), info = "slide lines - style attribute")
+
+  # Generate mock md file for data-background
+  plot <- file.path(getwd(), 'resources', 'tinyplot.png')
+  mdtext <- c(paste0("## BG Slide {data-background=", plot, "}\n"))
+  mock <- mock_markdown(mdtext = mdtext, outputdir = outputdir, self_contained = TRUE)
+  html = mock$html_file
+
+  slide_lines <-
+    c(any(grepl('<slide[^>]*style="[^"]*background-image: url\\(data:image/png;base64,[^\\)]*);[^"]*".*<h2>BG Slide</h2>', html))
+      ## still separate
+    , any(grepl('<slide[^>]*style="[^"]*background-size: 100% 100%;[^"]*".*<h2>BG Slide</h2>', html))
+    )
+  expect_true(all(slide_lines), info = "slide lines - self contained image")
 }
 
 
