@@ -195,7 +195,8 @@ default_site <- function(input, encoding = getOption("encoding"), ...) {
                           output_options = list(lib_dir = "site_libs",
                                                 self_contained = FALSE),
                           envir = envir,
-                          quiet = quiet)
+                          quiet = quiet,
+                          encoding = encoding)
       )
 
       # add to global list of outputs
@@ -359,6 +360,9 @@ copyable_site_resources <- function(input,
   excludes <- c("^rsconnect$", "^\\..*$", "^_.*$", "^.*_cache$",
                 extensions_regex,
                 utils::glob2rx(config$exclude))
+  # add ouput_dir to excludes if it's not '.'
+  if (config$output_dir != '.')
+    excludes <- c(excludes, config$output_dir)
   files <- all_files
   for (exclude in excludes)
     files <- files[!grepl(exclude, files)]

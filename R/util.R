@@ -60,15 +60,21 @@ read_lines_utf8 <- function(file, encoding) {
   # read the file
   lines <- readLines(file, warn = FALSE)
 
+  # convert to utf8
+  to_utf8(lines, encoding)
+}
+
+
+to_utf8 <- function(x, encoding) {
   # normalize encoding to iconv compatible form
   if (identical(encoding, "native.enc"))
     encoding <- ""
 
   # convert to utf8
   if (!identical(encoding, "UTF-8"))
-    iconv(lines, from = encoding, to = "UTF-8")
+    iconv(x, from = encoding, to = "UTF-8")
   else
-    mark_utf8(lines)
+    mark_utf8(x)
 }
 
 # mark the encoding of character vectors as UTF-8
@@ -81,13 +87,21 @@ mark_utf8 <- function(x) {
   attrs <- attributes(x)
   res <- lapply(x, mark_utf8)
   attributes(res) <- attrs
+  names(res) <- mark_utf8(names(res))
   res
 }
 
-# TODO: remove this when fixed upstream https://github.com/viking/r-yaml/issues/6
+# the yaml UTF-8 bug has been fixed https://github.com/viking/r-yaml/issues/6
+# but yaml >= 2.1.14 Win/Mac binaries are not available for R < 3.2.0, so we
+# still need the mark_utf8 trick
+#' @importFrom utils packageVersion
 yaml_load_utf8 <- function(string, ...) {
   string <- paste(string, collapse = '\n')
-  mark_utf8(yaml::yaml.load(enc2utf8(string), ...))
+  if (packageVersion('yaml') >= '2.1.14') {
+    yaml::yaml.load(string, ...)
+  } else {
+    mark_utf8(yaml::yaml.load(enc2utf8(string), ...))
+  }
 }
 
 yaml_load_file_utf8 <- function(input, ...) {
@@ -107,7 +121,7 @@ file_name_without_shell_chars <- function(file) {
 as_tmpfile <- function(str) {
   if (length(str) > 0) {
     str_tmpfile <- tempfile("rmarkdown-str", fileext = ".html")
-    writeLines(str, str_tmpfile)
+    writeLines(str, str_tmpfile, useBytes =  TRUE)
     str_tmpfile
   } else {
     NULL
@@ -286,7 +300,7 @@ latexmk <- function(file, engine) {
   if (latexmk_path == '') {
     # latexmk not found
     latexmk_emu(file, engine)
-  } else if (find_program('perl') != '') {
+  } else if (find_program('perl') != '' && latexmk_installed(latexmk_path)) {
     system2_quiet(latexmk_path, c(
       '-pdf -latexoption=-halt-on-error -interaction=batchmode',
       paste0('-pdflatex=', shQuote(engine)), shQuote(file)
@@ -296,7 +310,6 @@ latexmk <- function(file, engine) {
     })
     system2(latexmk_path, '-c', stdout = FALSE)  # clean up nonessential files
   } else {
-    warning("Perl must be installed and put on PATH for latexmk to work")
     latexmk_emu(file, engine)
   }
 }
@@ -323,7 +336,7 @@ latexmk_emu <- function(file, engine) {
     files3 <- setdiff(files2, files1)
     aux <- c(
       'aux', 'log', 'bbl', 'blg', 'fls', 'out', 'lof', 'lot', 'idx', 'toc',
-      'nav', 'snm', 'vrb'
+      'nav', 'snm', 'vrb', 'ilg', 'ind'
     )
     if (keep_log) aux <- setdiff(aux, 'log')
     unlink(files3[tools::file_ext(files3) %in% aux])
@@ -384,6 +397,16 @@ show_latex_error <- function(file) {
   }
 }
 
+# check if latexmk was correctly installed; see more info at
+# https://github.com/rstudio/bookdown/issues/121
+latexmk_installed <- function(latexmk_path) {
+  if (system2_quiet(latexmk_path, '-v') == 0) return(TRUE)
+  warning('The LaTeX package latexmk was not correctly installed.', call. = FALSE)
+  if (!is_windows()) return(FALSE)
+  shell('latexmk -v')  # hopefully MiKTeX can fix it automatically
+  system2_quiet(latexmk_path, '-v') == 0
+}
+
 # check the version of latexmk
 check_latexmk_version <- function(latexmk_path = find_program('latexmk')) {
   out <- system2(latexmk_path, '-v', stdout = TRUE)
@@ -406,19 +429,17 @@ n_bytes <- function(string) {
 
 starts_with_bytes <- function(string, bytes) {
   Encoding(string) <- Encoding(bytes) <- "bytes"
-  if (nchar(bytes) > nchar(string))
+  if (n_bytes(bytes) > n_bytes(string))
     return(FALSE)
-  substring(string, 1, nchar(bytes)) == bytes
+  substring(string, 1, n_bytes(bytes)) == bytes
 }
 
 ends_with_bytes <- function(string, bytes) {
   Encoding(string) <- Encoding(bytes) <- "bytes"
-  if (nchar(bytes) > nchar(string))
+  if (n_bytes(bytes) > n_bytes(string))
     return(FALSE)
-  substring(string, nchar(string) - nchar(bytes) + 1, nchar(string)) == bytes
+  substring(string, n_bytes(string) - n_bytes(bytes) + 1, n_bytes(string)) == bytes
 }
-
-
 
 base64_encode_object <- function(object) {
   object <- rapply(object, unclass, how = "list")
@@ -560,3 +581,11 @@ replace_binding <- function(binding, package, override) {
 join <- function(..., sep = "", collapse = "") {
   paste(..., sep = sep, collapse = collapse)
 }
+
+shell_exec <- function(cmd, intern = FALSE, wait = TRUE, ...) {
+  if (Sys.info()[["sysname"]] == "Windows")
+    shell(cmd, intern = intern, wait = wait, ...)
+  else
+    system(cmd, intern = intern, wait = wait, ...)
+}
+

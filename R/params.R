@@ -1,12 +1,9 @@
 
 knit_params_get <- function(input_lines, params) {
-  # check for recent enough knitr
-  if (utils::packageVersion("knitr") < "1.10") {
-    stop("knitr >= 1.10 required to use rmarkdown params")
-  }
 
   # read the default parameters and extract them into a named list
-  knit_params <- mark_utf8(knitr::knit_params(input_lines))
+  knit_params <- knitr::knit_params(input_lines)
+  if (packageVersion('yaml') < '2.1.14') knit_params <- mark_utf8(knit_params)
   default_params <- list()
   for (param in knit_params) {
     default_params[[param$name]] <- param$value
@@ -16,11 +13,9 @@ knit_params_get <- function(input_lines, params) {
   if (!is.null(params)) {
 
     if (identical(params, "ask")) {
-      if (!interactive()) {
-        stop("render parameter configuration only allowed in an interactive environment")
-      }
-
-      params <- knit_params_ask(input_lines = input_lines)
+      params <- knit_params_ask(
+        input_lines = input_lines, shiny_args = list(launch.browser = TRUE)
+      )
       if (is.null(params)) {
         stop("render parameter configuration canceled")
       }
@@ -171,8 +166,16 @@ params_get_control <- function(param) {
   control
 }
 
+# Returns true if the parameter can be configurable with Shiny UI elements.
 params_configurable <- function(param) {
-  length(param$value) <= 1 && !is.null(params_get_control(param))
+  if (is.null(params_get_control(param))) {
+    return(FALSE)                       # no Shiny control
+  }
+  multiple_ok <- (!is.null(param$multiple) && param$multiple)
+  if (multiple_ok) {
+    return(TRUE)
+  }
+  return (length(param$value) <= 1)     # multiple values only when multi-input controls
 }
 
 # Returns a new empty named list.
@@ -200,9 +203,6 @@ knit_params_ask <- function(file = NULL,
                             shiny_args = NULL,
                             save_caption = "Save",
                             encoding = getOption("encoding")) {
-  if (utils::packageVersion("knitr") < "1.10.18") {
-    stop("knitr >= 1.10.18 required to use rmarkdown::knit_params_ask")
-  }
 
   if (is.null(input_lines)) {
     if (is.null(file)) {
@@ -211,7 +211,8 @@ knit_params_ask <- function(file = NULL,
     input_lines <- read_lines_utf8(file, encoding)
   }
 
-  knit_params <- mark_utf8(knitr::knit_params(input_lines))
+  knit_params <- knitr::knit_params(input_lines)
+  if (packageVersion('yaml') < '2.1.14') knit_params <- mark_utf8(knit_params)
 
   ## Input validation on params (checks shared with render)
   if (!is.null(params)) {
@@ -280,7 +281,9 @@ knit_params_ask <- function(file = NULL,
           }
         } else {
           ## Not a special field. Blindly promote to the input control.
-          arguments[[name]] <<- param[[name]]
+          arguments[[name]] <<- if (inherits(param[[name]], 'knit_param_expr')) {
+            param[[name]][['value']]
+          } else param[[name]]
         }
       })
 
@@ -356,12 +359,10 @@ knit_params_ask <- function(file = NULL,
       shiny::observe({
         # A little reactive magic to keep in mind. If you're in one of the
         # "default/custom" selector scenarios, this will never fire until the
-        # user selects "custom" because hte value-producing input control is
+        # user selects "custom" because the value-producing input control is
         # not rendered until that point.
         uivalue <- input[[param$name]]
-        if (is.null(uivalue)) {
-          # ignore startup NULLs
-        } else if (hasDefaultValue(uivalue)) {
+        if (is.null(uivalue) || hasDefaultValue(uivalue)) {
           values[[param$name]] <<- NULL
         } else {
           values[[param$name]] <<- params_value_from_ui(inputControlFn, param$value, uivalue)

@@ -1,4 +1,102 @@
-rmarkdown 0.9.7 (unreleased)
+rmarkdown 1.3 (unreleased)
+--------------------------------------------------------------------------------
+
+* Fix v1.1 regression in ordering of CSS for ioslides_presentation.
+
+* Fix rendering of pagedtables within html_notebook format.
+
+* Ensure that html_prerendered UI is never cached.
+
+
+rmarkdown 1.2
+--------------------------------------------------------------------------------
+
+* Add support for df_print to handle additional dplyr classes: grouped_df,
+  rowwise_df and tbl_sql.
+
+* Add new `runtime: shiny_prerendered` mode for interactive documents.
+
+* Prepend "section-" to ids in runtime: shiny[_prerendered] to eliminate
+  potential conflicts with shiny output ids
+
+* Use html_dependencies for highlight.js, pagedtables, slidy, ioslides,
+  & navigation (improved dependency behavior for runtime: shiny[_prerendered])
+
+* Serialize runtime: shiny[_prerendered] dependencies to JSON rather than .rds
+
+* ioslides: check for null before concatenating attr["class"] (#836)
+
+* Add rmarkdown.onKnit/onKnitCompleted package hooks
+
+* Non-ASCII keys in yaml file should be marked to UTF8 as well, when read
+  into R as the name of a list (#841)
+
+* Remove key-column special-case left alignment in pagedtables (#829)
+
+* Replace backslashes in floating TOC headings (#849)
+
+* Suggests rather than Imports for tibble (R 3.0 compatibility)
+
+* Add `paged_table` function for printing paged tables within HTML documents
+
+* Support `{.active}` attribute for setting initially active tab (#789)
+
+* Add `knit_root_dir` argument to `render()` and YAML header, a convenience
+  for setting knitr's root.dir option
+
+* Improve alignment of text in sub-topics for floating TOC
+
+* Bibliography file paths in YAML containing forward slashes could not be
+  rendered (#875)
+
+rmarkdown 1.1
+--------------------------------------------------------------------------------
+
+* Fixed an issue where attempts to render an R Notebook could fail if the
+  path contained multibyte characters.
+
+* Fixed an issue where the default Beamer template did not provide vertical
+  padding between paragraphs with certain versions of pandoc (<= 1.17.2).
+
+* Try to install latexmk automatically on Windows
+
+* Added `df_print` option to html_document format for optionally printing data
+  frames using `knitr::kable`, the `tibble` package, or an arbitrary function
+
+* Fix for render_site not showing Chinese characters correctly
+
+* Fix for ignoring knit_meta that is explicitly passed to render
+
+* Parameter editing: don't allow NULL to overwrite previous state
+
+* Parameter editing: fix incorrect name for parameters with expressions
+
+* Parameter editing: allow multiple values when the parameter is configured
+  to use a "multiple" selector
+
+* Switched the order in which format dependencies are added for
+  `html_document` so that `extra_dependencies` are added at the end, after
+  bootstrap, etc. (#737)
+
+* `pdf_document(keep_tex = TRUE)` will generate the .tex document even if PDF
+  conversion fails (#779).
+
+* Move latex header includes to just before \begin{document}
+
+* Special 'global' chunk label for runtime: shiny which designates
+  a chunk to be run once and only once in the global environment
+  (startup performance improvement for multi-user shiny documents)
+
+* Ensure supporting files are writeable (#800)
+
+* Make the "show code" buttons more CSS-friendly (#795)
+
+* Exclude `output_dir` from site files (#803)
+
+* Export `navbar_html` and `yaml_front_matter` functions
+
+
+rmarkdown 1.0
 --------------------------------------------------------------------------------
 
 * `toc_float` no longer automatically sets `toc = TRUE`
@@ -25,8 +123,18 @@ rmarkdown 0.9.7 (unreleased)
   when pandoc >= 1.17 (pandoc hanging bug was fixed in this version)
 
 * Default highlighting engine for `html_document` now highlights bash, c++,
-  css, ini, javascript, perl, python, r, ruby, scala, and xml
+  css, ini, javascript, perl, python, r, ruby, scala, stan and xml
 
+* Added `print` sub-option to `toc_float` to control whether the table of
+  contents appears when user prints out the HTML page.
+
+* Added `readme` option to `html_vignette` which automatically creates a
+  package level README.md (for GitHub) in addition to rendering the vignette.
+
+* Support for `keep_md` in `html_vignette` format.
+
+* Try to install the latexmk package automatically on Windows if the executable
+  latexmk.exe exists.
 
 rmarkdown 0.9.6
 --------------------------------------------------------------------------------

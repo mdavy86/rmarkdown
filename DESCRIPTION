@@ -1,8 +1,7 @@
 Package: rmarkdown
 Type: Package
 Title: Dynamic Documents for R
-Version: 0.9.6.9
-Date: 2016-04-28
+Version: 1.2.9000
 Authors@R: c(
   person("JJ", "Allaire", role = c("aut", "cre"), email = "jj@rstudio.com"),
   person("Joe", "Cheng", role = "aut", email = "joe@rstudio.com"),
@@ -12,7 +11,7 @@ Authors@R: c(
   person("Jeff", "Allen", role = "aut", email = "jeff@rstudio.com"),
   person("Hadley", "Wickham", role = "aut", email = "hadley@rstudio.com"),
   person("Aron", "Atkins", role = "aut", email = "aron@rstudio.com"),
-  person("Rob", "Hyndman", role = "aut", email = "robjhyndman@gmail.com"),
+  person("Rob", "Hyndman", role = "aut", email = "Rob.Hyndman@monash.edu"),
   person(family = "RStudio, Inc.", role = "cph"),
   person(family = "jQuery Foundation", role = "cph",
          comment = "jQuery library"),
@@ -63,20 +62,22 @@ Imports:
     tools,
     utils,
     grDevices,
-    knitr (>= 1.13),
+    knitr (>= 1.14),
     yaml (>= 2.1.5),
-    htmltools (>= 0.2.4),
+    htmltools (>= 0.3.5),
     caTools,
-    evaluate,
+    evaluate (>= 0.8),
     base64enc,
-    jsonlite
+    jsonlite,
+    rprojroot,
+    methods
 Suggests:
     shiny (>= 0.11),
     tufte,
     testthat,
-    digest
-SystemRequirements: pandoc (>= 1.12.3) - http://johnmacfarlane.net/pandoc
+    digest,
+    tibble
+SystemRequirements: pandoc (>= 1.12.3) - http://pandoc.org
 URL: http://rmarkdown.rstudio.com
 License: GPL-3
-Roxygen: list(wrap = FALSE)
 RoxygenNote: 5.0.1

@@ -11,6 +11,7 @@ ioslides_presentation <- function(logo = NULL,
                                   fig_retina = 2,
                                   fig_caption = TRUE,
                                   dev = 'png',
+                                  df_print = "default",
                                   smart = TRUE,
                                   self_contained = TRUE,
                                   widescreen = FALSE,
@@ -25,6 +26,7 @@ ioslides_presentation <- function(logo = NULL,
                                   lib_dir = NULL,
                                   md_extensions = NULL,
                                   pandoc_args = NULL,
+                                  extra_dependencies = NULL,
                                   ...) {
 
   # base pandoc options for all output
@@ -33,6 +35,13 @@ ioslides_presentation <- function(logo = NULL,
   # widescreen
   if (widescreen)
     args <- c(args, "--variable", "widescreen");
+
+  # pagedtables
+  if (identical(df_print, "paged")) {
+    extra_dependencies <- append(extra_dependencies,
+                                 list(html_dependency_pagedtable()))
+
+  }
 
   # transition
   if (is.numeric(transition))
@@ -61,6 +70,10 @@ ioslides_presentation <- function(logo = NULL,
     args <- c(args,
               "--template",
               pandoc_path_arg(rmarkdown_system_file("rmd/ioslides/default.html")))
+
+  # html dependency for ioslides
+  extra_dependencies <- append(extra_dependencies,
+                               list(html_dependency_ioslides()))
 
   # analytics
   if(!is.null(analytics))
@@ -98,15 +111,6 @@ ioslides_presentation <- function(logo = NULL,
       }
       args <- c(args, "--variable", paste("logo=", logo_path, sep = ""))
     }
-
-    # ioslides
-    ioslides_path <- rmarkdown_system_file("rmd/ioslides/ioslides-13.5.1")
-    if (!self_contained)
-      ioslides_path <- normalized_relative_to(output_dir,
-        render_supporting_files(ioslides_path, lib_dir))
-    else
-      ioslides_path <- pandoc_path_arg(ioslides_path)
-    args <- c(args, "--variable", paste("ioslides-url=", ioslides_path, sep=""))
 
     # return additional args
     args
@@ -227,12 +231,36 @@ ioslides_presentation <- function(logo = NULL,
                             args = args),
     keep_md = keep_md,
     clean_supporting = self_contained,
+    df_print = df_print,
     pre_processor = pre_processor,
     post_processor = post_processor,
     base_format = html_document_base(smart = smart, lib_dir = lib_dir,
                                      self_contained = self_contained,
                                      mathjax = mathjax,
                                      pandoc_args = pandoc_args,
+                                     extra_dependencies = extra_dependencies,
                                      bootstrap_compatible = TRUE, ...))
+}
+
+
+html_dependency_ioslides <- function() {
+  htmlDependency(
+    name = "ioslides",
+    version = "13.5.1",
+    src = rmarkdown_system_file("rmd/ioslides/ioslides-13.5.1"),
+    script = c(
+      "js/modernizr.custom.45394.js",
+      "js/prettify/prettify.js",
+      "js/prettify/lang-r.js",
+      "js/prettify/lang-yaml.js",
+      "js/hammer.js",
+      "js/slide-controller.js",
+      "js/slide-deck.js"
+    ),
+    stylesheet = c(
+      "fonts/fonts.css",
+      "theme/css/default.css",
+      "theme/css/phone.css")
+    )
 }
 

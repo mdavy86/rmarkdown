@@ -11,10 +11,10 @@
 html_notebook_output_html(html, meta = NULL)
 
 html_notebook_output_img(path = NULL, bytes = NULL, attributes = NULL,
-  meta = NULL)
+  meta = NULL, format = c("png", "jpeg"))
 
 html_notebook_output_png(path = NULL, bytes = NULL, attributes = NULL,
-  meta = NULL)
+  meta = NULL, format = c("png", "jpeg"))
 
 html_notebook_output_code(code, attributes = list(class = "r"), meta = NULL)
 }
@@ -33,11 +33,17 @@ will be obtained by reading the file.}
 \item{attributes}{A named \R list of HTML attributes. These will be
 escaped and inserted into the generated HTML as appropriate.}
 
+\item{format}{The image format; one of \code{"png"} or \code{"jpeg"}.}
+
 \item{code}{Source code.}
 }
 \description{
 Utilities for generating output for the \code{html_notebook} format,
 through the \code{output_source} function attached to a
 \code{\link{output_format}}.
+}
+\details{
+For more details on the HTML file format produced by
+ \code{html_notebook}, see \href{http://rmarkdown.rstudio.com/r_notebook_format.html}{http://rmarkdown.rstudio.com/r_notebook_format.html}.
 }
 

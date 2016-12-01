@@ -2,6 +2,8 @@
 #'
 #'Format for converting from R Markdown to an HTML document.
 #'
+#' @inheritParams output_format
+#'
 #'@param toc \code{TRUE} to include a table of contents in the output
 #'@param toc_depth Depth of headers to include in table of contents
 #'@param toc_float \code{TRUE} to float the table of contents to the left of the
@@ -120,11 +122,12 @@
 #'  control the behavior of the floating table of contents. Options include:
 #'
 #'  \itemize{ \item{\code{collapsed} (defaults to \code{TRUE}) controls whether
-#'  the table of contents appers with only the top-level (H2) headers. When
+#'  the table of contents appears with only the top-level (H2) headers. When
 #'  collapsed the table of contents is automatically expanded inline when
 #'  necessary.} \item{\code{smooth_scroll} (defaults to \code{TRUE}) controls
 #'  whether page scrolls are animated when table of contents items are navigated
-#'  to via mouse clicks.} }
+#'  to via mouse clicks.} \item{\code{print} (defaults to \code{TRUE}) controls
+#'  whether the table of contents appears when user prints out the HTML page.}}
 #'
 #'@section Tabbed Sections:
 #'
@@ -191,6 +194,7 @@ html_document <- function(toc = FALSE,
                           fig_retina = 2,
                           fig_caption = TRUE,
                           dev = 'png',
+                          df_print = "default",
                           code_folding = c("none", "show", "hide"),
                           code_download = FALSE,
                           smart = TRUE,
@@ -226,7 +230,8 @@ html_document <- function(toc = FALSE,
 
     # resolve options
     toc_float_options <- list(collapsed = TRUE,
-                              smooth_scroll = TRUE)
+                              smooth_scroll = TRUE,
+                              print = TRUE)
     if (is.list(toc_float)) {
       toc_float_options <- merge_lists(toc_float_options, toc_float)
       toc_float <- TRUE
@@ -252,6 +257,8 @@ html_document <- function(toc = FALSE,
       args <- c(args, pandoc_variable_arg("toc_collapsed", "1"))
     if (toc_float_options$smooth_scroll)
       args <- c(args, pandoc_variable_arg("toc_smooth_scroll", "1"))
+    if (toc_float_options$print)
+      args <- c(args, pandoc_variable_arg("toc_print", "1"))
   }
 
   # template path and assets
@@ -261,6 +268,38 @@ html_document <- function(toc = FALSE,
   else if (!is.null(template))
     args <- c(args, "--template", pandoc_path_arg(template))
 
+  # validate code_folding
+  code_folding <- match.arg(code_folding)
+
+  # navigation dependencies
+  if (!is.null(theme)) {
+    code_menu <- !identical(code_folding, "none") || code_download
+    source_embed <- code_download
+    extra_dependencies <- append(extra_dependencies,
+      list(
+        html_dependency_jquery(),
+        html_dependency_navigation(code_menu = code_menu,
+                                   source_embed = source_embed)
+      )
+    )
+  }
+
+  # highlight
+  args <- c(args, pandoc_html_highlight_args(template, highlight))
+
+  # add highlight.js html_dependency if required
+  if (identical(template, "default") && is_highlightjs(highlight)) {
+    extra_dependencies <- append(extra_dependencies, list(
+      htmlDependency(
+        "highlightjs",
+        version = "1.1",
+        src = rmarkdown_system_file("rmd/h/highlightjs-1.1"),
+        script = "highlight.js",
+        stylesheet = paste0(highlight, ".css")
+      )
+    ))
+  }
+
   # numbered sections
   if (number_sections)
     args <- c(args, "--number-sections")
@@ -269,8 +308,12 @@ html_document <- function(toc = FALSE,
   for (css_file in css)
     args <- c(args, "--css", pandoc_path_arg(css_file))
 
-  # validate code_folding
-  code_folding <- match.arg(code_folding)
+  # manage list of exit_actions (backing out changes to knitr options)
+  exit_actions <- list()
+  on_exit <- function() {
+    for (action in exit_actions)
+      try(action())
+  }
 
   # capture the source code if requested
   source_code <- NULL
@@ -285,10 +328,16 @@ html_document <- function(toc = FALSE,
     }
   }
 
+  # pagedtable
+  if (identical(df_print, "paged")) {
+    extra_dependencies <- append(extra_dependencies,
+                                 list(html_dependency_pagedtable()))
+  }
+
   # pre-processor for arguments that may depend on the name of the
   # the input file AND which need to inject html dependencies
   # (otherwise we could just call the pre_processor)
-  post_knit <- function(metadata, input_file, runtime, ...) {
+  post_knit <- function(metadata, input_file, runtime, encoding, ...) {
 
     # extra args
     args <- c()
@@ -305,7 +354,7 @@ html_document <- function(toc = FALSE,
         if (file.exists(navbar_yaml))
           navbar <- navbar_html_from_yaml(navbar_yaml)
         # if there is no _navbar.yml then look in site config (if we have it)
-        config <- site_config(input_file)
+        config <- site_config(input_file, encoding)
         if (!is.null(config) && !is.null(config$navbar))
           navbar <- navbar_html(config$navbar)
       }
@@ -315,7 +364,7 @@ html_document <- function(toc = FALSE,
         # include the navbar html
         includes <- list(before_body = navbar)
         args <- c(args, includes_to_pandoc_args(includes,
-                                  filter = if (identical(runtime, "shiny"))
+                                  filter = if (is_shiny_classic(runtime))
                                     function(x) normalize_path(x, mustWork = FALSE)
                                   else
                                     identity))
@@ -328,7 +377,7 @@ html_document <- function(toc = FALSE,
         # navbar icon dependencies
         iconDeps <- navbar_icon_dependencies(navbar)
         if (length(iconDeps) > 0)
-          knit_meta_add(list(iconDeps))
+          knitr::knit_meta_add(list(iconDeps))
       }
     }
 
@@ -346,22 +395,6 @@ html_document <- function(toc = FALSE,
 
     # extra args
     args <- c()
-
-    # highlight
-    args <- c(args, pandoc_html_highlight_args(highlight,
-                                               template,
-                                               self_contained,
-                                               lib_dir,
-                                               output_dir))
-
-    # bootstrap navigation (requires theme)
-    if (!is.null(theme)) {
-
-      # js for for code folding and tabsets
-      args <- c(args, pandoc_html_navigation_args(self_contained,
-                                                  lib_dir,
-                                                  output_dir))
-    }
 
     # track whether we have a code menu
     code_menu <- FALSE
@@ -395,7 +428,7 @@ html_document <- function(toc = FALSE,
     # making a Shiny document so we can resolve them even if rendering
     # elsewhere.
     args <- c(args, includes_to_pandoc_args(includes,
-                      filter = if (identical(runtime, "shiny"))
+                      filter = if (is_shiny_classic(runtime))
                         function(x) normalize_path(x, mustWork = FALSE)
                       else
                         identity))
@@ -412,9 +445,11 @@ html_document <- function(toc = FALSE,
                             args = args),
     keep_md = keep_md,
     clean_supporting = self_contained,
+    df_print = df_print,
     pre_knit = pre_knit,
     post_knit = post_knit,
     pre_processor = pre_processor,
+    on_exit = on_exit,
     base_format = html_document_base(smart = smart, theme = theme,
                                      self_contained = self_contained,
                                      lib_dir = lib_dir, mathjax = mathjax,
@@ -520,6 +555,15 @@ navbar_html_from_yaml <- function(navbar_yaml) {
   navbar_html(navbar)
 }
 
+
+#' Create a navbar HTML file from a navbar definition
+#'
+#' @param navbar Navbar definition
+#' @param links List of navbar links
+#' @return Path to temporary file with navbar definition
+#'
+#' @keywords internal
+#' @export
 navbar_html <- function(navbar) {
 
   # title and type
@@ -544,6 +588,9 @@ navbar_html <- function(navbar) {
 }
 
 
+#' @keywords internal
+#' @name navbar_html
+#' @export
 navbar_links_html <- function(links) {
   as.character(navbar_links_tags(links))
 }

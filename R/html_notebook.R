@@ -7,6 +7,14 @@
 #'   outputs to use instead of those produced by evaluating the
 #'   underlying \R code). See \code{\link{html_notebook_output}} for
 #'   more details.
+#' @param self_contained Produce a standalone HTML file with no external
+#'   dependencies. Defaults to \code{TRUE}. In notebooks, setting this to
+#'   \code{FALSE} is not recommended, since the setting does not apply to
+#'   embedded notebook output such as plots and HTML widgets.
+#'
+#' @details For more details on the HTML file format produced by
+#'  \code{html_notebook}, see \href{http://rmarkdown.rstudio.com/r_notebook_format.html}{http://rmarkdown.rstudio.com/r_notebook_format.html}.
+#'
 #' @importFrom evaluate evaluate
 #' @export
 html_notebook <- function(toc = FALSE,
@@ -28,14 +36,20 @@ html_notebook <- function(toc = FALSE,
                           md_extensions = NULL,
                           pandoc_args = NULL,
                           output_source = NULL,
+                          self_contained = TRUE,
                           ...)
 {
   # some global state that is captured in pre_knit
-  evaluate_hook <- NULL
   exit_actions <- list()
   on_exit <- function() {
     for (action in exit_actions)
       try(action())
+  }
+
+  paged_table_html_asis = function(x) {
+    knitr::asis_output(
+      paged_table_html(x)
+    )
   }
 
   # define pre_knit hook
@@ -73,6 +87,16 @@ html_notebook <- function(toc = FALSE,
       # 'opts_hooks' hook will do; we just want this to be called
       # on entry to any chunk)
       include_hook <- knitr::opts_hooks$get("include")
+      exit_actions <<- c(exit_actions, function() {
+        knitr::opts_hooks$set(
+          include = if (is.null(include_hook)) {
+            function(options) options
+          } else {
+            include_hook
+          }
+        )
+      })
+
       knitr::opts_hooks$set(include = function(options) {
 
         # save context
@@ -94,7 +118,7 @@ html_notebook <- function(toc = FALSE,
       })
 
       # set up evaluate hook (override any pre-existing evaluate hook)
-      evaluate_hook <<- knitr::knit_hooks$get("evaluate")
+      evaluate_hook <- knitr::knit_hooks$get("evaluate")
       exit_actions <<- c(exit_actions, function() {
         knitr::knit_hooks$set(evaluate = evaluate_hook)
       })
@@ -106,6 +130,34 @@ html_notebook <- function(toc = FALSE,
         as_evaluate_output(output, context, ...)
       })
     }
+
+    # set large max.print for knitr sql engine (since we will give
+    # it a scrolling treatment)
+    knit_sql_max_print <- knitr::opts_knit$get('sql.max.print');
+    if (is.null(knit_sql_max_print)) {
+      knitr::opts_knit$set(sql.max.print = 1000)
+      exit_actions <<- c(exit_actions, function() {
+        knitr::opts_knit$set(sql.max.print = knit_sql_max_print)
+      })
+    }
+
+    # set sql.print to use paged tables
+    knit_sql_print <- knitr::opts_knit$get('sql.print');
+    if (is.null(knit_sql_print)) {
+      knitr::opts_knit$set(sql.print = paged_table_html)
+      exit_actions <<- c(exit_actions, function() {
+        knitr::opts_knit$set(sql.print = knit_sql_print)
+      })
+    }
+  }
+
+  # pre-processor adds kable-scroll argument to give scrolling treatment for
+  # data frames (which are printed via kable by default)
+  pre_processor <- function(metadata, input_file, runtime, knit_meta, files_dir,
+                            output_dir) {
+    args <- c()
+    args <- c(args, pandoc_variable_arg("kable-scroll", "1"))
+    args
   }
 
   # post-processor to rename output file if necessary
@@ -123,12 +175,16 @@ html_notebook <- function(toc = FALSE,
 
   # these arguments to html_document are fixed so we need to
   # flag them as invalid for users
-  fixed_args <- c("self_contained", "keep_md", "template", "lib_dir", "dev")
+  fixed_args <- c("keep_md", "template", "lib_dir", "dev")
   forwarded_args <- names(list(...))
   for (arg in forwarded_args) {
     if (arg %in% fixed_args)
       stop("The ", arg, " option is not valid for the html_notebook format.")
   }
+
+  # add dependencies
+  extra_dependencies <- append(extra_dependencies,
+                               list(html_dependency_pagedtable()))
 
   # generate actual format
   base_format <- html_document(toc = toc,
@@ -149,18 +205,21 @@ html_notebook <- function(toc = FALSE,
                                includes = includes,
                                md_extensions = md_extensions,
                                pandoc_args = pandoc_args,
+                               self_contained = self_contained,
                                # options forced for notebooks
                                dev = "png",
                                code_download = TRUE,
-                               self_contained = TRUE,
                                keep_md = FALSE,
                                template = "default",
                                lib_dir = NULL,
                                ...)
+
   rmarkdown::output_format(
     knitr = html_notebook_knitr_options(),
     pandoc = NULL,
+    df_print = paged_table_html_asis,
     pre_knit = pre_knit,
+    pre_processor = pre_processor,
     post_processor = post_processor,
     base_format =  base_format,
     on_exit = on_exit
@@ -175,6 +234,10 @@ html_notebook <- function(toc = FALSE,
 #'
 #' @param path The path to an R Notebook file (with extension \code{.nb.html}).
 #' @param encoding The document's encoding (assumend \code{"UTF-8"} by default).
+#'
+#' @details For more details on the HTML file format produced by
+#'  \code{html_notebook}, see \href{http://rmarkdown.rstudio.com/r_notebook_format.html}{http://rmarkdown.rstudio.com/r_notebook_format.html}.
+#'
 #' @export
 parse_html_notebook <- function(path, encoding = "UTF-8") {
 
@@ -251,18 +314,12 @@ html_notebook_annotated_output <- function(output, label, meta = NULL) {
   knitr::asis_output(pasted)
 }
 
-html_notebook_annotated_knitr_hook <- function(label, hook, meta = NULL,
-                                               pre = NULL, post = NULL) {
-  force(list(label, hook, meta, pre, post))
+html_notebook_annotated_knitr_hook <- function(label, hook, meta = NULL) {
+  force(list(label, hook, meta))
   function(x, ...) {
-    # call pre, post hooks
-    if (is.function(pre)) pre(x, ...)
 
     # call regular hooks and annotate output
     output <- hook(x, ...)
-
-    # register post hook handler
-    if (is.function(post)) on.exit(post(x, output, ...), add = TRUE)
 
     # generate output
     meta <- if (is.function(meta)) meta(x, output, ...)
@@ -295,23 +352,33 @@ html_notebook_knitr_options <- function() {
     error   = html_notebook_text_hook
   )
 
-  pre_hooks <- list(
-    chunk = function(...) {
-      context <- render_context()
-      context$chunk.index <- context$chunk.index + 1
-    }
-  )
-
-  post_hooks <- list()
-
   knit_hooks <- lapply(hook_names, function(hook_name) {
     html_notebook_annotated_knitr_hook(hook_name,
                                        orig_knit_hooks[[hook_name]],
-                                       meta_hooks[[hook_name]],
-                                       pre_hooks[[hook_name]],
-                                       post_hooks[[hook_name]])
+                                       meta_hooks[[hook_name]])
   })
   names(knit_hooks) <- hook_names
+
+  # use a custom 'chunk' hook that ensures that html comments
+  # do not get indented
+  chunk_hook <- knitr::knit_hooks$get("chunk")
+  knit_hooks$chunk <- function(x, options) {
+
+    # update chunk line
+    context <- render_context()
+    context$chunk.index <- context$chunk.index + 1
+
+    # call original hook
+    output <- chunk_hook(x, options)
+
+    # clean up indentation for html
+    if (!is.null(options$indent)) {
+      output <- gsub("\n\\s*<!-- rnb-", "\n<!-- rnb-", output, perl = TRUE)
+    }
+
+    # write annotated output
+    html_notebook_annotated_output(output, "chunk")
+  }
 
   opts_chunk <- list(render = html_notebook_render_hook,
                      comment = NA)

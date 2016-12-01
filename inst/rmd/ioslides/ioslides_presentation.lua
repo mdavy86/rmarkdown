@@ -314,7 +314,11 @@ function Header(lev, s, attr)
 
     -- add 'smaller' class if it was globally specified
     if smaller then
-      attr["class"] = "smaller " .. attr["class"]
+      if (attr["class"]) then
+        attr["class"] = "smaller " .. attr["class"]
+      else
+        attr["class"] = "smaller"
+      end
     end
 
     if string.len(slide_style) > 0 then
